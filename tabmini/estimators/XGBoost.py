@@ -1,84 +1,82 @@
-from pathlib import Path
+import numpy as np 
+import pandas as pd 
+from xgboost import XGBClassifier 
 
-import numpy as np
+from sklearn.utils import check_X_y 
+from sklearn.metrics import f1_score 
+from sklearn.metrics import make_scorer
+from sklearn.metrics import accuracy_score, f1_score
+from sklearn.utils.validation import check_is_fitted, check_array 
+from sklearn.model_selection import GridSearchCV
 from sklearn.base import BaseEstimator, ClassifierMixin
-from sklearn.utils import check_X_y
-from sklearn.utils.validation import check_is_fitted, check_array
-from xgboost import XGBClassifier
-
 
 class XGBoost(BaseEstimator, ClassifierMixin):
-    """A scikit-learn compatible estimator that uses XGBoost to fit and predict data."""
-
     def __init__(
-            self,
-            path: Path,
-            time_limit: int = 3600,
-            device: str = "cpu",
-            seed: int = 0,
-            kwargs: dict = {}
+            self, 
+            time_limit: int= 3600, 
+            device = "cuda", 
+            seed: int = 42, 
+            kwargs: dict= {}, 
+            small_dataset: bool = False 
     ):
-        self.path = path
         self.time_limit = time_limit
-        self.device = device
-        self.seed = seed
-        self.kwargs = kwargs
+        self.device = device 
+        self.seed = seed 
+        self.kwargs = kwargs 
+        self.result_df = None 
+
+        self.param_grid = {
+            'n_estimators': [10, 20, 30] if small_dataset else [50, 100, 200],
+            'max_depth': [3, 5] if small_dataset else [3, 5, 7],
+            'learning_rate': [0.01, 0.05, 0.1] if small_dataset else [0.01, 0.1, 0.3]
+        }
         
-        self.xgb = XGBClassifier(
-            n_estimators=2,
-            max_depth=2,
-            learning_rate=1,
-            objective='binary:logistic',
-            eval_metric='auc',
-            use_label_encoder=False,
-            random_state=self.seed,
-        )
-
-        # specify that this is a binary classifier
-        self.n_classes_ = 2
+        self.n_classes = 2 
         self.classes_ = [0, 1]
+    
+    def fit(self, X, y) -> "XGBoost": 
+        X, y = check_X_y(X, y, accept_sparse= True)
+        results = []
+        param_combinations =  [dict(zip(self.param_grid.keys(), v)) for v in np.array(np.meshgrid(*self.param_grid.values())).T.reshape(-1, len(self.param_grid.keys()))]
+        for param in param_combinations: 
+            param['n_estimators'] = int(param['n_estimators'])
+            param['max_depth'] = int(param['max_depth'])
+            current_model = XGBClassifier(
+                **param,
+                objective= 'binary:logistic',
+                eval_metric='auc',
+                use_label_encoder = False, 
+                random_state = self.seed
+            )
+            current_model.fit(X, y)
 
-    def fit(self, X, y) -> 'XGBoost':
-        """
+            # make predictions 
+            y_pred = current_model.predict(X)
+            f1 = f1_score(y, y_pred, average='binary')
+            acc = accuracy_score(y, y_pred)
 
-        Parameters
-        ----------
-        X : {array-like, sparse matrix}, shape (n_samples, n_features)
-            The training input samples.
-        y : array-like, shape (n_samples,) or (n_samples, n_outputs)
-            The target values (class labels in classification, real numbers in
-            regression).
+            results.append({
+                **param,
+                'accuracy': acc,
+                'f1_score': f1
+            })
 
-        Returns
-        -------
-        self : object
-            Returns self.
-        """
-        X, y = check_X_y(X, y, accept_sparse=True)
-
-        self.feature_names = [f"f{i}" for i in range(X.shape[1])]
-        self.feature_names.insert(0, "target")
-
-        self.model = self.xgb.fit(X, y)
-
-        return self
-
-    def predict_proba(self, X):
+        self.result_df = pd.DataFrame(results)
+    
+    def predict_proba(self, X): 
         check_is_fitted(self)
-        X = check_array(X, accept_sparse=True)
-
-        probability_positive_class = self.model.predict(X)
+        X = check_array(X, accept_sparse= True)
+        probability_positive_class = self.model.predict_proba(X)[:, 1] 
         probability_positive_class_scaled = (probability_positive_class - probability_positive_class.min()) / (
-                probability_positive_class.max() - probability_positive_class.min() + 1e-10)
-
-        # Create a 2D array with probabilities of both classes
+        probability_positive_class.max() - probability_positive_class.min() + 1e-10)
         return np.vstack([1 - probability_positive_class_scaled, probability_positive_class_scaled]).T
 
-    def decision_function(self, X):
-        # Get the probabilities from predict_proba
+    def decision_function(self, X): 
         proba = self.predict_proba(X)
-
-        # Calculate the log of ratios for binary classification
         decision = np.log((proba[:, 1] + 1e-10) / (proba[:, 0] + 1e-10))
-
         return decision
+    
+    def save_results(self, filename):
+        if self.result_df is not None: 
+            self.result_df.to_csv(filename, index= False)
+        
