@@ -4,10 +4,8 @@ from xgboost import XGBClassifier
 
 from sklearn.utils import check_X_y 
 from sklearn.metrics import f1_score 
-from sklearn.metrics import make_scorer
 from sklearn.metrics import accuracy_score, f1_score
 from sklearn.utils.validation import check_is_fitted, check_array 
-from sklearn.model_selection import GridSearchCV
 from sklearn.base import BaseEstimator, ClassifierMixin
 
 class XGBoost(BaseEstimator, ClassifierMixin):
