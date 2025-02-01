@@ -19,6 +19,14 @@ The models implemented in this study include:
    ```bash
    pip install -r requirements.txt
    ```
+2. **Run**
+
+   Example, we want to train XGBoost model
+   ```bash
+   python XGBoost_model.py
+   ```
+   The result will be saved in **./result** folder. 
+
 
 
 ## License
