@@ -23,11 +23,16 @@ The models implemented in this study include:
 
    Example, we want to train XGBoost model
    ```bash
-   python XGBoost_model.py
+   python main.py --model 1 --save_dir result/
    ```
    The result will be saved in **./result** folder. 
 
+## 🚀 Command Line Arguments
 
+| 🏷 Argument Command | 🔢 Type | 📝 Description |
+|--------------------|--------|-------------|
+| **--model**       | `int`  | Type of model:  <br> **1** - XGBoost  <br> **2** - LightGBM  <br> **4** - Random Forest  <br> **8** - TabR  <br> **10** - TabNet |
+| **--save_dir**    | `str`  | The directory to save result.
 
 ## License
 

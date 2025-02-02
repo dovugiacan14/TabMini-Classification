@@ -1,25 +1,22 @@
 import numpy as np
 import pandas as pd
-from xgboost import XGBClassifier
 
 from sklearn.utils import check_X_y
-from sklearn.metrics import f1_score
-from sklearn.metrics import accuracy_score, f1_score
+from sklearn.metrics import f1_score, accuracy_score
 from sklearn.utils.validation import check_is_fitted, check_array
+from sklearn.ensemble import RandomForestClassifier
 from sklearn.base import BaseEstimator, ClassifierMixin
 
 
-class XGBoost(BaseEstimator, ClassifierMixin):
+class RandomForest(BaseEstimator, ClassifierMixin):
     def __init__(
         self,
         time_limit: int = 3600,
-        device="cuda",
         seed: int = 42,
         kwargs: dict = {},
         small_dataset: bool = False,
     ):
         self.time_limit = time_limit
-        self.device = device
         self.seed = seed
         self.kwargs = kwargs
         self.result_df = None
@@ -27,10 +24,11 @@ class XGBoost(BaseEstimator, ClassifierMixin):
         self.param_grid = {
             "n_estimators": [10, 20, 30] if small_dataset else [50, 100, 200],
             "max_depth": [3, 5] if small_dataset else [3, 5, 7],
-            "learning_rate": [0.01, 0.05, 0.1] if small_dataset else [0.01, 0.1, 0.3],
+            "min_samples_split": [2, 5, 10],
+            "min_samples_leaf": [1, 2, 4],
         }
 
-    def fit(self, X, y) -> "XGBoost":
+    def fit(self, X, y) -> "RandomForest":
         X, y = check_X_y(X, y, accept_sparse=True)
         results = []
         param_combinations = [
@@ -42,13 +40,11 @@ class XGBoost(BaseEstimator, ClassifierMixin):
         for param in param_combinations:
             param["n_estimators"] = int(param["n_estimators"])
             param["max_depth"] = int(param["max_depth"])
-            current_model = XGBClassifier(
-                **param,
-                objective="binary:logistic",
-                eval_metric="auc",
-                use_label_encoder=False,
-                random_state=self.seed
-            )
+            param["min_samples_split"] = int(param["min_samples_split"])
+            param["min_samples_leaf"] = int(param["min_samples_leaf"])
+
+            current_model = RandomForestClassifier(**param, random_state=self.seed)
+
             current_model.fit(X, y)
 
             # make predictions
