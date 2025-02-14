@@ -23,7 +23,7 @@ The models implemented in this study include:
 
    Example, we want to train XGBoost model
    ```bash
-   python main.py --model 1 --save_dir result/
+   python main.py --model 1 --selection False --scale False --save_dir result/
    ```
    The result will be saved in **./result** folder. 
 
@@ -32,6 +32,8 @@ The models implemented in this study include:
 | 🏷 Argument Command | 🔢 Type | 📝 Description |
 |--------------------|--------|-------------|
 | **--model**       | `int`  | Type of model:  <br> **1** - XGBoost  <br> **2** - LightGBM  <br> **4** - Random Forest  <br> **8** - TabR  <br> **10** - TabNet |
+| **--selection**    | `bool`  | Implement feature selections or not.
+| **--scale**    | `bool`  | Apply Standard Scaler or not..
 | **--save_dir**    | `str`  | The directory to save result.
 
 ## License
