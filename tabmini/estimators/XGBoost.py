@@ -30,9 +30,9 @@ class XGBoost(BaseEstimator, ClassifierMixin):
             "learning_rate": [0.01, 0.05, 0.1] if small_dataset else [0.01, 0.1, 0.3],
         }
 
-    def fit(self, X, y) -> "XGBoost":
-        X, y = check_X_y(X, y, accept_sparse=True)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    def fit(self, X, y, X_test, y_test) -> "XGBoost":
+        X_train, y_train = check_X_y(X, y, accept_sparse=True)
+        # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
         results = []
         best_f1 = -1
