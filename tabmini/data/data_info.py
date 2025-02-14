@@ -1,3 +1,60 @@
+data_groups = {
+    "100": [
+        "analcatdata_aids",
+        "analcatdata_asbestos",
+        "analcatdata_bankruptcy",
+        "analcatdata_creditscore",
+        "analcatdata_cyyoung8092",
+        "analcatdata_cyyoung9302",
+        "analcatdata_fraud",
+        "analcatdata_japansolvent",
+        "labor",
+        "lupus",
+        "parity5",
+        "postoperative_patient_data",
+    ],  # M = 32 - 100 (12 datasets)
+    "200": [
+        "analcatdata_boxing1",
+        "analcatdata_boxing2",
+        "appendicitis",
+        "backache",
+        "corral",
+        "glass2",
+        "hepatitis",
+        "molecular_biology_promoters",
+        "mux6",
+        "prnn_crabs",
+    ],  # M = 101 - 200 (10 datasets)
+    "300": [
+        "analcatdata_lawsuit",
+        "biomed",
+        "breast_cancer",
+        "heart_h",
+        "heart_statlog",
+        "hungarian",
+        "prnn_synth",
+        "sonar",
+        "spect",
+    ],  # M = 201 - 300 (9 datasets)
+    "400": [
+        "bupa",
+        "cleve",
+        "colic",
+        "haberman",
+        "heart_c",
+        "horse_colic",
+        "ionosphere",
+        "spectf",
+    ],  # M = 301 - 400 (8 datasets)
+    "500": [
+        "clean1",
+        "house_votes_84",
+        "irish",
+        "saheart",
+        "vote",
+    ],  # M = 401 - 500 (5 datasets)
+}
+
 files = [
     # M = 32 - 100 (12 datasets)
     ["analcatdata_aids", "analcatdata_asbestos", "analcatdata_bankruptcy", "analcatdata_creditscore",
@@ -14,7 +71,6 @@ files = [
     # M = 401 - 500 (5 datasets)
     ["clean1", "house_votes_84", "irish", "saheart", "vote"]
 ]
-
 # Taken from table 8 of the tabPFN paper...
 
 _excluded_1 = [
@@ -105,7 +161,7 @@ _excluded_1 = [
     "cholesterol",
     "chscase_funds",
     "pbcseq",
-    "pbc"
+    "pbc",
 ]
 
 # ... and table 9 of the tabPFN paper
@@ -171,7 +227,7 @@ _excluded_2 = [
     "iris-example",
     "Touch2",
     "penguins",
-    "titanic"
+    "titanic",
 ]
 
 # remove duplicates, strip all strings of leading and trailing whitespace, and sort
