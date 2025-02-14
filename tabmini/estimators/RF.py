@@ -29,9 +29,9 @@ class RandomForest(BaseEstimator, ClassifierMixin):
             "min_samples_leaf": [1, 2, 4],
         }
 
-    def fit(self, X, y) -> "RandomForest":
-        X, y = check_X_y(X, y, accept_sparse=True)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+    def fit(self, X, y, X_test, y_test) -> "RandomForest":
+        X_train, y_train = check_X_y(X, y, accept_sparse=True)
+        # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
         results = []
         best_f1 = -1
@@ -55,8 +55,8 @@ class RandomForest(BaseEstimator, ClassifierMixin):
 
             # make predictions
             y_pred = current_model.predict(X_test)
-            f1 = f1_score(y, y_pred, average="binary")
-            acc = accuracy_score(y, y_pred)
+            f1 = f1_score(y_test, y_pred, average="binary")
+            acc = accuracy_score(y_test, y_pred)
 
             results.append({**param, "accuracy": acc, "f1_score": f1})
 
