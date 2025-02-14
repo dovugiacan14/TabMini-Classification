@@ -9,11 +9,11 @@ import torch
 import torch.nn as nn
 from torch import Tensor
 import torch.nn.functional as F
+from sklearn.metrics import accuracy_score, f1_score
 
 
 def get_d_out(n_classes: Optional[int]) -> int:
     return 1 if n_classes is None or n_classes == 2 else n_classes
-
 
 class TabR(nn.Module):
     def __init__(
@@ -46,7 +46,7 @@ class TabR(nn.Module):
         super().__init__()
         if dropout1 == "dropout0":
             dropout1 = dropout0
-            
+
         self.one_hot_encoder = None
         self.num_embeddings = None
 
@@ -182,8 +182,8 @@ class TabR(nn.Module):
             assert y is not None
             candidate_k = torch.cat([k, candidate_k])
             candidate_y = torch.cat([y, candidate_y])
-        else:
-            assert y is None
+        # else:
+        #     assert y is None
 
         # >>>
         batch_size, d_main = k.shape
@@ -250,3 +250,28 @@ class TabR(nn.Module):
             x = x + block(x)
         x = self.head(x)
         return x
+    
+    def evaluate(self, X_test: dict[str, Tensor], y_test: Tensor) -> tuple:
+        self.eval()
+        with torch.no_grad(): 
+            y_pred = self.forward(
+                x_=X_test,
+                y=None,
+                candidate_x_=X_test,  # Không có tập ứng viên trong test, chỉ dùng chính X_test
+                candidate_y=y_test,
+                context_size=5,  # Bạn có thể điều chỉnh nếu cần
+                is_train=False
+            )
+            y_pred = y_pred.argmax(dim= 1)
+
+        y_test_np = y_test.cpu().numpy()
+        y_pred_np = y_pred.cpu().numpy()
+
+        acc = accuracy_score(y_test_np, y_pred_np)
+        f1 = f1_score(y_test_np, y_pred_np)
+        
+        return acc, f1
+
+    def save_results(self, result, filename):
+        if result is not None:
+            result.to_csv(filename, index=False)
