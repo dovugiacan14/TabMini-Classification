@@ -105,7 +105,7 @@ def main(args):
 
             citerion = nn.BCEWithLogitsLoss()
             optimizer = optim.Adam(model.parameters(), lr= 0.001)
-            epochs = 50
+            epochs = 200
             
             for epoch in range(epochs):
                 model.train()
@@ -127,7 +127,7 @@ def main(args):
 
             # evaluate 
             acc, f1 = model.evaluate(X_test_dict, y_test_tensor)
-            result = pd.DataFrame({"accuracy": acc, "f1_score": f1})
+            result = pd.DataFrame({"accuracy": [acc], "f1_score": [f1]})
 
             # export result
             model.save_results(
