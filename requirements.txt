@@ -14,3 +14,4 @@ pytorch-lightning==2.0.9.post0
 ray==2.6.3
 faiss-cpu==1.10.0
 delu==0.0.15
+pytorch-tabnet==4.1.0
