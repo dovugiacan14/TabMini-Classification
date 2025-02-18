@@ -1,19 +1,26 @@
 # import lib
 import delu
 import math
+import numpy as np
+import pandas as pd
 import faiss
 import faiss.contrib.torch_utils
+from itertools import product
 from typing import Literal, Optional, Union
 
 import torch
 import torch.nn as nn
-from torch import Tensor
+import torch.optim as optim
 import torch.nn.functional as F
+from torch import Tensor
+from sklearn.model_selection import train_test_split
 from sklearn.metrics import accuracy_score, f1_score
+from sklearn.utils.validation import check_X_y, check_array, check_is_fitted
 
 
 def get_d_out(n_classes: Optional[int]) -> int:
     return 1 if n_classes is None or n_classes == 2 else n_classes
+
 
 class TabR(nn.Module):
     def __init__(
@@ -23,7 +30,7 @@ class TabR(nn.Module):
         n_bin_features: int,
         cat_cardinalities: list[int],
         n_classes: Optional[int],
-        num_embeddings: Optional[dict], 
+        num_embeddings: Optional[dict],
         d_main: int,
         d_multiplier: float,
         encoder_n_blocks: int,
@@ -251,27 +258,180 @@ class TabR(nn.Module):
         x = self.head(x)
         return x
     
-    def evaluate(self, X_test: dict[str, Tensor], y_test: Tensor) -> tuple:
-        self.eval()
-        with torch.no_grad(): 
-            y_pred = self.forward(
-                x_=X_test,
-                y=None,
-                candidate_x_=X_test,  # Không có tập ứng viên trong test, chỉ dùng chính X_test
-                candidate_y=y_test,
-                context_size=5,  # Bạn có thể điều chỉnh nếu cần
-                is_train=False
+
+class TabRTrainer:
+    def __init__(
+        self,
+        time_limit: int = 3600,
+        device: str = "cpu",
+        seed: int = 42,
+        kwargs: dict = {},
+        small_dataset: bool = False,
+    ):
+        self.time_limit = time_limit
+        self.device = device
+        self.seed = seed
+        self.kwargs = kwargs
+        self.result_df = None
+
+        self.param_grid = {
+            "learning_rate": [0.001, 0.05, 0.1],
+            "epochs": [10, 50, 100, 150],
+        }
+
+        self.default_model_params = {
+            "d_main": 128,
+            "d_multiplier": 2,
+            "encoder_n_blocks": 3,
+            "predictor_n_blocks": 2,
+            "mixer_normalization": "auto",
+            "context_dropout": 0.1,
+            "dropout0": 0.2,
+            "dropout1": "dropout0",
+            "normalization": "BatchNorm1d",
+            "activation": "ReLU",
+            "memory_efficient": False,
+        }
+
+    def fit(self, X, y, X_val=None, y_val=None) -> "TabRTrainer":
+        X_train, y_train = check_X_y(X, y, accept_sparse=True)
+        if X_val is None or y_val is None:
+            X_val, y_val = X_train, y_train
+
+        # convert input data to Tensor
+        self.X_train_tensor = torch.tensor(X_train, dtype=torch.float32).to(self.device)
+        self.X_val_tensor = torch.tensor(X_val.values, dtype=torch.float32).to(self.device)
+        self.y_train_tensor = (
+            torch.tensor(y_train, dtype=torch.float32).squeeze().long().to(self.device)
+        )
+        self.y_val_tensor = (
+            torch.tensor(y_val.values, dtype=torch.float32).squeeze().long().to(self.device)
+        )
+
+        self.X_train_dict = {"num": self.X_train_tensor}
+        self.X_val_dict = {"num": self.X_val_tensor}
+
+        results = []
+        best_model = None
+
+        # Create the parameter combinations
+        param_combinations = [
+            dict(zip(self.param_grid.keys(), v))
+            for v in np.array(np.meshgrid(*self.param_grid.values())).T.reshape(
+                -1, len(self.param_grid.keys())
             )
-            y_pred = y_pred.argmax(dim= 1)
+        ]
 
-        y_test_np = y_test.cpu().numpy()
-        y_pred_np = y_pred.cpu().numpy()
+        for param in param_combinations:
+            print(f"\nTraining with parameters: {param}")
+            current_model = TabR(
+                n_num_features=self.X_train_tensor.shape[1],
+                n_bin_features=0,
+                cat_cardinalities=[],
+                n_classes=len(np.unique(self.y_train_tensor.cpu().numpy())),
+                num_embeddings=None,
+                **self.default_model_params,
+            ).to(self.device)
 
-        acc = accuracy_score(y_test_np, y_pred_np)
-        f1 = f1_score(y_test_np, y_pred_np)
-        
-        return acc, f1
+            criterion = nn.BCEWithLogitsLoss()
+            optimizer = optim.Adam(
+                current_model.parameters(), lr=param["learning_rate"]
+            )
 
-    def save_results(self, result, filename):
-        if result is not None:
-            result.to_csv(filename, index=False)
+            # Training loop
+            for epoch in range(int(param["epochs"])):
+                current_model.train()
+                optimizer.zero_grad()
+
+                outputs = current_model(
+                    x_=self.X_train_dict,
+                    y=self.y_train_tensor,
+                    candidate_x_=self.X_train_dict,
+                    candidate_y=self.y_train_tensor,
+                    context_size=5,
+                    is_train=True,
+                )
+
+                loss = criterion(outputs.squeeze(), self.y_train_tensor.float())
+                loss.backward()
+                optimizer.step()
+
+                if (epoch + 1) % 10 == 0:
+                    print(
+                        f"Epoch [{epoch+1}/{param['epochs']}] - Loss: {loss.item():.4f}"
+                    )
+
+            # Evaluation
+            current_model.eval()
+            with torch.no_grad():
+                y_pred = current_model(
+                    x_=self.X_val_dict,
+                    y=None,
+                    candidate_x_=self.X_val_dict,
+                    candidate_y=self.y_val_tensor,
+                    context_size=5,
+                    is_train=False,
+                )
+                # y_pred = y_pred.argmax(dim=1)
+                y_pred = torch.sigmoid(y_pred)  
+                y_pred = (y_pred > 0.5).long() 
+
+            # Calculate metrics
+            y_val_np = self.y_val_tensor.cpu().numpy()
+            y_pred_np = y_pred.cpu().numpy()
+
+            acc = accuracy_score(y_val_np, y_pred_np)
+            f1 = f1_score(y_val_np, y_pred_np, average="weighted")
+
+            # Store results
+            results.append(
+                {
+                    **param,
+                    "accuracy": acc,
+                    "f1_score": f1,
+                }
+            )
+
+        # Save results to DataFrame
+        self.result_df = pd.DataFrame(results).sort_values(
+            by="f1_score", ascending=False
+        )
+        self.model = best_model
+        self.best_params_ = {k: param[k] for k in self.param_grid.keys()}
+
+        return self
+
+    def predict(self, X):
+        check_is_fitted(self, ["model", "best_params_"])
+        X = check_array(X, accept_sparse=True)
+
+        X_tensor = torch.tensor(X, dtype=torch.float32).to(self.device)
+        X_dict = {"num": X_tensor}
+
+        self.model.eval()
+        with torch.no_grad():
+            predictions = self.model(
+                x_=X_dict,
+                y=None,
+                candidate_x_=X_dict,
+                candidate_y=None,
+                context_size=5,
+                is_train=False,
+            )
+            predictions = predictions.argmax(dim=1)
+
+        return predictions.cpu().numpy()
+
+    def save_results(self, filename):
+        if self.result_df is not None:
+            self.result_df.to_csv(filename, index=False)
+            print(f"Results saved to {filename}")
+
+
+if __name__ == "__main__":
+    x_df = pd.read_csv("dataset/400/bupa/X.csv")
+    y_df = pd.read_csv("dataset/400/bupa/y.csv")
+    X_train, X_test, y_train, y_test = train_test_split(x_df, y_df, train_size= 0.8)
+    model = TabRTrainer()
+    model.fit(X_train, y_train, X_test, y_test)
+    model.save_results(filename= "tmp.csv")

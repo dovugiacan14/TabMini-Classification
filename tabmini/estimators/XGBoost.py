@@ -76,23 +76,7 @@ class XGBoost(BaseEstimator, ClassifierMixin):
         self.model = best_model
         self.best_params_ = best_model.get_params() if best_model else None
 
-    def predict_proba(self, X):
-        check_is_fitted(self)
-        X = check_array(X, accept_sparse=True)
-        probability_positive_class = self.model.predict_proba(X)[:, 1]
-        probability_positive_class_scaled = (
-            probability_positive_class - probability_positive_class.min()
-        ) / (
-            probability_positive_class.max() - probability_positive_class.min() + 1e-10
-        )
-        return np.vstack(
-            [1 - probability_positive_class_scaled, probability_positive_class_scaled]
-        ).T
 
-    def decision_function(self, X):
-        proba = self.predict_proba(X)
-        decision = np.log((proba[:, 1] + 1e-10) / (proba[:, 0] + 1e-10))
-        return decision
 
     def save_results(self, filename):
         if self.result_df is not None:
