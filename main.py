@@ -1,9 +1,3 @@
-import numpy as np
-import pandas as pd
-import torch 
-import torch.nn as nn 
-import torch.optim as optim 
-
 import tabmini
 import argparse
 from pathlib import Path
@@ -11,7 +5,7 @@ from tabmini.data.data_processing import DataProcessor
 from tabmini.estimators import XGBoost
 from tabmini.estimators import LightGBM
 from tabmini.estimators.RF import RandomForest
-from tabmini.estimators.TabR import TabR, TabRTrainer 
+from tabmini.estimators.TabR import TabRTrainer 
 from tabmini.estimators.TabNet import TabNet
 from tabmini.types import TabminiDataset
 
