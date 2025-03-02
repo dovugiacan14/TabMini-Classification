@@ -25,7 +25,7 @@ class TabNet(BaseEstimator, ClassifierMixin):
         self.result_df = None
         
         self.param_grid = {
-            "learning_rate": [0.001, 0.05, 0.1],
+            "lr": [0.001, 0.05, 0.1],
             "epochs": [10, 50, 100, 150],
         }
 

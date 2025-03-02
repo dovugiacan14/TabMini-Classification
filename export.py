@@ -6,4 +6,4 @@ from tabmini.data.data_processing import DataProcessor
 data_processor = DataProcessor()
 dataset: TabminiDataset = tabmini.load_dataset() 
 
-data_processor.export(dataset, data_groups, "dataset")
+data_processor.export(dataset, data_groups, "dataset2")
