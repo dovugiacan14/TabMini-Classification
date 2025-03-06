@@ -65,7 +65,7 @@ class TabNet(BaseEstimator, ClassifierMixin):
             current_model = TabNetClassifier(
                 n_d=8,
                 n_a=8,
-                scheduler_params={"is_batch_level": True, "epochs": custom_epochs},
+                # scheduler_params={"is_batch_level": True, "epochs": custom_epochs},
                 optimizer_params=dict(lr=custom_lr),
                 gamma=1.3,
             )
@@ -75,6 +75,7 @@ class TabNet(BaseEstimator, ClassifierMixin):
                 patience= 1000,
                 eval_set=[(X_train, y_train)],
                 eval_name=["train"],
+                max_epochs= int(custom_epochs), 
             )
 
             y_pred = current_model.predict(X_test.values)
