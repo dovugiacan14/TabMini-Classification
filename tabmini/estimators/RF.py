@@ -31,7 +31,6 @@ class RandomForest(BaseEstimator, ClassifierMixin):
 
     def fit(self, X, y, X_test, y_test) -> "RandomForest":
         X_train, y_train = check_X_y(X, y, accept_sparse=True)
-        # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
 
         results = []
         best_f1 = -1

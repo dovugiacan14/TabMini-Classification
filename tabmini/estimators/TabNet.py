@@ -28,11 +28,12 @@ class TabNet(BaseEstimator, ClassifierMixin):
         self.result_df = None
 
         self.param_grid = {
-            "epochs": [20, 30] if small_dataset else [40, 50, 70],
-            "lr": [0.001, 0.005, 0.0025],
+            "lr":[0.001, 0.05, 0.01],
+            "epochs": [100, 200, 300],
         }
 
-    def fit(self, X, y) -> 'TabNet':
+
+    def fit(self, X, y, X_test, y_test) -> 'TabNet':
         """
 
         Parameters
@@ -48,8 +49,7 @@ class TabNet(BaseEstimator, ClassifierMixin):
         self : object
             Returns self.
         """
-        X, y = check_X_y(X, y, accept_sparse=True)
-        X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)
+        X_train, y_train = check_X_y(X, y, accept_sparse=True)
 
         results = []
         best_f1 = -1
@@ -61,6 +61,10 @@ class TabNet(BaseEstimator, ClassifierMixin):
                 -1, len(self.param_grid.keys())
             )
         ]
+
+        X_test = X_test.values
+        y_test = y_test.values
+
         for param in param_combinations:
             custom_lr = param["lr"]
             custom_epochs = param["epochs"]
@@ -78,7 +82,7 @@ class TabNet(BaseEstimator, ClassifierMixin):
                 scheduler_fn=torch.optim.lr_scheduler.StepLR,
             )
             
-            current_model.fit(X_train = X_train, y_train= y_train, patience= 999, max_epochs=custom_epochs,
+            current_model.fit(X_train = X_train, y_train= y_train, patience= 999, max_epochs=int(custom_epochs),
                               eval_set=[(X_train, y_train), (X_test, y_test)],
                               eval_name=['train', 'valid'],
                               eval_metric=['accuracy'],
